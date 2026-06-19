@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Kodiak Biomechanical Tracker 🦾</title>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+  
+  <style>
+    body { font-family: sans-serif; background: #121212; color: white; text-align: center; }
+    #canvas-container { position: relative; width: 100%; max-width: 640px; margin: auto; }
+    canvas { position: absolute; left: 0; top: 0; width: 100%; }
+    video { width: 100%; max-width: 640px; transform: scaleX(-1); display: none; }
+    .panel { background: #1e1e1e; padding: 15px; border-radius: 8px; margin-top: 500px; }
+  </style>
+</head>
+<body>
+
+  <h1>Kodiak Tracker Móvil</h1>
+  <div id="canvas-container">
+    <video id="webcam" autoplay playsinline></video>
+    <canvas id="output_canvas" width="640" height="480"></canvas>
+  </div>
+
+  <div class="panel">
+    <h3>Métricas en Tiempo Real</h3>
+    <p>Ángulo Codo: <span id="angle-val">0</span>°</p>
+    <p>Torque Estimado: <span id="torque-val">0</span> Nm</p>
+    <label>Peso Lastre (kg): </label>
+    <input type="number" id="peso" value="20" style="width: 60px;">
+  </div>
+
+  <script>
+    const videoElement = document.getElementById('webcam');
+    const canvasElement = document.getElementById('output_canvas');
+    const canvasCtx = canvasElement.getContext('2d');
+    
+    // Configuración de variables de Gabriel
+    const longitudAntebrazo = 0.25; // metros
+
+    function calcularAngulo(A, B, C) {
+        let AB = Math.sqrt(Math.pow(B.x-A.x,2)+ Math.pow(B.y-A.y,2));    
+        let BC = Math.sqrt(Math.pow(B.x-C.x,2)+ Math.pow(B.y-C.y,2)); 
+        let AC = Math.sqrt(Math.pow(C.x-A.x,2)+ Math.pow(C.y-A.y,2));
+        return Math.acos((BC*BC+AB*AB-AC*AC)/(2*BC*AB)) * (180/Math.PI);
+    }
+
+    function onResults(results) {
+      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+      
+      // Dibujar la imagen de la cámara reflejada (efecto espejo)
+      canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+      if (results.poseLandmarks) {
+        // Puntos clave de MediaPipe (Hombro 11, Codo 13, Muñeca 15 para brazo izquierdo)
+        const hombro = results.poseLandmarks[11];
+        const codo = results.poseLandmarks[13];
+        const muñeca = results.poseLandmarks[15];
+
+        if (hombro && codo && muñeca) {
+            let angulo = calcularAngulo(hombro, codo, muñeca);
+            document.getElementById('angle-val').innerText = Math.round(angulo);
+
+            // Cálculo biomecánico de Torque (F * r * sin(theta))
+            let peso = parseFloat(document.getElementById('peso').value);
+            let fuerza = peso * 9.81;
+            let torque = fuerza * longitudAntebrazo * Math.sin(angulo * Math.PI / 180);
+            document.getElementById('torque-val').innerText = torque.toFixed(2);
+
+            // Dibujar punto en el codo para feedback visual
+            canvasCtx.fillStyle = "#00FF00";
+            canvasCtx.beginPath();
+            canvasCtx.arc(codo.x * canvasElement.width, codo.y * canvasElement.height, 8, 0, 2 * Math.PI);
+            canvasCtx.fill();
+        }
+      }
+    }
+
+    const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
+    pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+    pose.onResults(onResults);
+
+    const camera = new Camera(videoElement, {
+      onFrame: async () => { await pose.send({image: videoElement}); },
+      width: 640,
+      height: 480
+    });
+    camera.start();
+  </script>
+</body>
+</html>
