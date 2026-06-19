@@ -3,81 +3,104 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Kodiak Biomechanical Tracker 🦾</title>
+  <title>Kodiak Biomechanical Lab 🦾</title>
   
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0c0c0e; color: #e4e4e7; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #09090b; color: #f4f4f5; padding: 10px; display: flex; flex-direction: column; align-items: center; }
     
-    h1 { font-size: 1.4rem; color: #00ffcc; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; text-shadow: 0 0 10px rgba(0,255,204,0.3); }
+    h1 { font-size: 1.2rem; color: #00ffcc; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; text-shadow: 0 0 8px rgba(0,255,204,0.2); }
     
-    #video-container { position: relative; width: 100%; max-width: 480px; aspect-ratio: 4/3; background: #18181b; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.6); border: 2px solid #27272a; }
-    video { width: 100%; height: 100%; object-fit: cover; display: none; }
+    #canvas-container { position: relative; width: 100%; max-width: 640px; aspect-ratio: 4/3; background: #141416; border-radius: 12px; overflow: hidden; border: 2px solid #27272a; }
+    video { display: none; }
     canvas { width: 100%; height: 100%; object-fit: cover; }
     
-    .btn-container { width: 100%; max-width: 480px; display: flex; gap: 10px; margin: 12px 0; }
-    button { flex: 1; padding: 12px; background: #27272a; border: 1px solid #3f3f46; border-radius: 8px; color: white; font-weight: bold; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; }
-    button:active { transform: scale(0.98); background: #3f3f46; }
-    button.active { background: #00ffcc; color: #0c0c0e; border-color: #00ffcc; box-shadow: 0 0 12px rgba(0,255,204,0.4); }
+    .btn-container { width: 100%; max-width: 640px; display: flex; gap: 8px; margin: 10px 0; }
+    button { flex: 1; padding: 12px; background: #1f1f23; border: 1px solid #3f3f46; border-radius: 8px; color: white; font-weight: bold; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 5px; }
+    button:active { transform: scale(0.98); }
+    #btn-record { background: #3b0712; border-color: #991b1b; color: #fca5a5; }
+    #btn-record.recording { background: #dc2626; color: white; animation: pulse 1.5s infinite; }
 
-    .panel { width: 100%; max-width: 480px; background: #18181b; border-radius: 12px; padding: 15px; border: 1px solid #27272a; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-    .section-title { font-size: 0.9rem; color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; border-bottom: 1px solid #27272a; padding-bottom: 5px; }
+    .panel { width: 100%; max-width: 640px; background: #141416; border-radius: 12px; padding: 12px; border: 1px solid #27272a; margin-bottom: 10px; }
+    .section-title { font-size: 0.8rem; color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; border-bottom: 1px solid #27272a; padding-bottom: 4px; }
     
-    .grid-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-    .input-group { display: flex; flex-direction: column; gap: 5px; }
-    label { font-size: 0.8rem; color: #a1a1aa; }
-    input, select { padding: 10px; background: #0c0c0e; border: 1px solid #3f3f46; border-radius: 6px; color: white; font-size: 0.9rem; width: 100%; }
-    input:focus, select:focus { border-color: #00ffcc; outline: none; }
-    
-    .checkbox-group { display: flex; align-items: center; gap: 8px; grid-column: span 2; margin-top: 5px; }
-    .checkbox-group input { width: auto; }
+    /* Panel de Aprendizaje Autónomo / Tracking de Articulaciones */
+    .joint-learning-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+    .joint-status { background: #1f1f23; padding: 8px; border-radius: 6px; text-align: center; border: 1px solid #27272a; }
+    .joint-name { font-size: 0.7rem; color: #a1a1aa; font-weight: bold; }
+    .joint-score { font-size: 1rem; font-weight: bold; margin-top: 2px; }
+    .status-good { color: #10b981; }
+    .status-bad { color: #ef4444; }
 
-    .metrics-display { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 5px; }
-    .metric-card { background: #27272a; padding: 10px; border-radius: 8px; border-left: 4px solid #3f3f46; }
+    .grid-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    input, select { padding: 8px; background: #09090b; border: 1px solid #3f3f46; border-radius: 6px; color: white; font-size: 0.85rem; width: 100%; }
+    
+    .metrics-display { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .metric-card { background: #1f1f23; padding: 8px; border-radius: 6px; border-left: 3px solid #3f3f46; }
     .metric-card.highlight { border-left-color: #00ffcc; }
     .metric-card.special { border-left-color: #d946ef; }
-    .metric-label { font-size: 0.75rem; color: #a1a1aa; }
-    .metric-value { font-size: 1.1rem; font-weight: bold; color: white; margin-top: 2px; }
+    .metric-label { font-size: 0.7rem; color: #a1a1aa; }
+    .metric-value { font-size: 1rem; font-weight: bold; color: white; }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.6; }
+      100% { opacity: 1; }
+    }
   </style>
 </head>
 <body>
 
-  <h1>Kodiak Biomechanical Tracker 🦾</h1>
+  <h1>Kodiak Biomechanical Lab 🦾</h1>
 
-  <div id="video-container">
+  <div id="canvas-container">
     <video id="webcam" autoplay playsinline muted></video>
     <canvas id="output_canvas"></canvas>
   </div>
 
   <div class="btn-container">
-    <button id="btn-toggle-cam" onclick="toggleCamera()">🔄 Cambiar Cámara</button>
-    <select id="select-ejercicio" onchange="cambiarEjercicio()" style="flex: 1.2; font-weight: bold;">
-      <option value="armwrestling">Armwrestling (Codo/Torque)</option>
-      <option value="streetlifting">Street Lifting (Velocidad/Potencia)</option>
-      <option value="piernas">Sentadilla (Ángulo Rodilla)</option>
+    <button id="btn-toggle-cam" onclick="toggleCamera()">🔄 Cámara</button>
+    <button id="btn-record" onclick="toggleRecording()">🔴 Grabar Tracking</button>
+    <select id="select-ejercicio" onchange="actualizarCalculos()" style="flex: 1.2;">
+      <option value="armwrestling">Armwrestling (Torque)</option>
+      <option value="streetlifting">Street Lifting (Potencia)</option>
     </select>
   </div>
 
   <div class="panel">
-    <div class="section-title">Variables de Calibración</div>
+    <div class="section-title">Diagnóstico de Visibilidad (Ajusta tu posición)</div>
+    <div class="joint-learning-grid">
+      <div class="joint-status" id="track-hombro">
+        <div class="joint-name">HOMBRO</div>
+        <div class="joint-score status-bad" id="score-hombro">0%</div>
+      </div>
+      <div class="joint-status" id="track-codo">
+        <div class="joint-name">CODO</div>
+        <div class="joint-score status-bad" id="score-codo">0%</div>
+      </div>
+      <div class="joint-status" id="track-muñeca">
+        <div class="joint-name">MUÑECA</div>
+        <div class="joint-score status-bad" id="score-muñeca">0%</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="section-title">Calibración de Carga Externa</div>
     <div class="grid-inputs">
-      <div class="input-group">
-        <label>Peso de Carga (kg)</label>
-        <input type="number" id="peso" value="25" min="0" oninput="actualizarCalculos()">
+      <div>
+        <label style="font-size:0.75rem; color:#a1a1aa;">Peso Lastre (kg)</label>
+        <input type="number" id="peso" value="25" oninput="actualizarCalculos()">
       </div>
-      <div class="input-group">
-        <label>Longitud Palanca (m)</label>
+      <div>
+        <label style="font-size:0.75rem; color:#a1a1aa;">Longitud Palanca (m)</label>
         <input type="number" id="palanca" value="0.25" step="0.01" oninput="actualizarCalculos()">
-      </div>
-      <div class="checkbox-group">
-        <input type="checkbox" id="chk-lastre" checked onchange="actualizarCalculos()">
-        <label for="chk-lastre">Fórmula Calistenia (+5kg en Fondos/Dominadas)</label>
       </div>
     </div>
 
-    <div class="section-title">Análisis Biomecánico</div>
+    <div class="section-title">Métricas de Rendimiento</div>
     <div class="metrics-display">
       <div class="metric-card highlight">
         <div class="metric-label">ÁNGULO ARTICULAR</div>
@@ -87,16 +110,12 @@
         <div id="lbl-fuerza" class="metric-label">TORQUE ESTIMADO</div>
         <div id="val-fuerza" class="metric-value">0.00 Nm</div>
       </div>
-    </div>
-
-    <div class="section-title" style="margin-top: 15px;">Algoritmo Kodiak (Estimación de Carga Máxima)</div>
-    <div class="metrics-display">
       <div class="metric-card special">
-        <div class="metric-label">REPES DINÁMICAS TEÓRICAS</div>
+        <div class="metric-label">REPES TEÓRICAS (ISO/3)</div>
         <div id="val-repes" class="metric-value">0.00</div>
       </div>
       <div class="metric-card special">
-        <div class="metric-label">AGUANTE MÁXIMO TEÓRICO</div>
+        <div class="metric-label">AGUANTE MAX (KODIAK)</div>
         <div id="val-maximo" class="metric-value">0.00 kg</div>
       </div>
     </div>
@@ -106,33 +125,28 @@
     const videoElement = document.getElementById('webcam');
     const canvasElement = document.getElementById('output_canvas');
     const canvasCtx = canvasElement.getContext('2d');
-
-    let currentFacingMode = 'user'; // 'user' = frontal, 'environment' = trasera
+    
+    let currentFacingMode = 'user'; 
     let isMirrored = true;
     let localStream = null;
     let anguloActual = 0;
     
-    // Variables para tracking de potencia
+    // Variables para Grabación de Video
+    let mediaRecorder;
+    let recordedChunks = [];
+    let isRecording = false;
+
+    // Métricas de Potencia/Velocidad
     let prevY = null;
     let prevTime = performance.now();
     let potenciaActual = 0;
-
-    function calcularAngulo(A, B, C) {
-      let AB = Math.sqrt(Math.pow(B.x-A.x, 2) + Math.pow(B.y-A.y, 2));    
-      let BC = Math.sqrt(Math.pow(B.x-C.x, 2) + Math.pow(B.y-C.y, 2)); 
-      let AC = Math.sqrt(Math.pow(C.x-A.x, 2) + Math.pow(C.y-A.y, 2));
-      let radianes = Math.acos((BC*BC + AB*AB - AC*AC) / (2*BC*AB));
-      return isNaN(radianes) ? 0 : radianes * (180 / Math.PI);
-    }
 
     function actualizarCalculos() {
       const modo = document.getElementById('select-ejercicio').value;
       const pesoInput = parseFloat(document.getElementById('peso').value) || 0;
       const palancaInput = parseFloat(document.getElementById('palanca').value) || 0.25;
-      const usarLastreExtra = document.getElementById('chk-lastre').checked;
 
-      // 1. Cálculos Biomecánicos Estándar
-      if (modo === 'armwrestling' || modo === 'piernas') {
+      if (modo === 'armwrestling') {
         document.getElementById('lbl-fuerza').innerText = "TORQUE ESTIMADO";
         let fuerza = pesoInput * 9.81;
         let torque = fuerza * palancaInput * Math.sin(anguloActual * Math.PI / 180);
@@ -142,26 +156,45 @@
         document.getElementById('val-fuerza').innerText = Math.round(potenciaActual) + " W";
       }
 
-      // 2. Integración de Fórmulas Propias de Gabriel (Kodiak Formulas)
-      // Convertir el ángulo en una simulación de tiempo isométrico retenido si se sostiene la posición
-      // Para simular el cálculo: asumimos que si el ángulo está en rango crítico de esfuerzo (ej: bloqueo a ~90°), evaluamos el potencial.
-      // Modificamos para usar una métrica limpia basada en tu rendimiento:
-      let isoSeconds = (anguloActual > 45) ? (anguloActual / 10) : 3; // Simulación dinámica basada en apertura angular
-      let repesDinamicas = isoSeconds / 3;
+      // Integración de tu fórmula nativa: repes = segundos / 3. 
+      // Simulamos la retención angular para el cálculo dinámico
+      let isoSecondsSim = (anguloActual > 35) ? (anguloActual / 8) : 2;
+      let repesDinamicas = isoSecondsSim / 3;
       document.getElementById('val-repes').innerText = repesDinamicas.toFixed(2);
 
-      let plusKg = usarLastreExtra ? 5 : 0;
+      // M = B + (B * R * 0.0333) + B. Sumamos +5kg automáticos en modo Street Lifting (Fondos/Dominadas)
+      let plusKg = (modo === 'streetlifting') ? 5 : 0;
       let maxEndurance = (pesoInput * repesDinamicas * 0.0333) + pesoInput + plusKg;
-      
       document.getElementById('val-maximo').innerText = maxEndurance.toFixed(1) + " kg";
     }
 
-    function cambiarEjercicio() {
-      actualizarCalculos();
+    function actualizarDiagnosticoAI(hombro, codo, muñeca) {
+      const actualizarNodo = (idScore, idCard, landmark) => {
+        const elScore = document.getElementById(idScore);
+        const elCard = document.getElementById(idCard);
+        if (!landmark) {
+          elScore.innerText = "0%";
+          elScore.className = "joint-score status-bad";
+          return;
+        }
+        let score = Math.round(landmark.visibility * 100);
+        elScore.innerText = score + "%";
+        
+        if (score > 75) {
+          elScore.className = "joint-score status-good";
+          elCard.style.borderColor = "#10b981";
+        } else {
+          elScore.className = "joint-score status-bad";
+          elCard.style.borderColor = "#ef4444";
+        }
+      };
+
+      actualizarNodo('score-hombro', 'track-hombro', hombro);
+      actualizarNodo('score-codo', 'track-codo', codo);
+      actualizarNodo('score-muñeca', 'track-muñeca', muñeca);
     }
 
     function onResults(results) {
-      // Ajustar resolución del lienzo dinámicamente al tamaño real del video capturado
       if (canvasElement.width !== videoElement.videoWidth) {
         canvasElement.width = videoElement.videoWidth;
         canvasElement.height = videoElement.videoHeight;
@@ -170,152 +203,148 @@
       canvasCtx.save();
       canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
       
-      // Dibujar cuadro de video respetando si requiere modo espejo o no
       if (isMirrored) {
         canvasCtx.translate(canvasElement.width, 0);
         canvasCtx.scale(-1, 1);
       }
       canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
-      if (isMirrored) {
-        canvasCtx.restore();
-      } else {
-        canvasCtx.restore();
-      }
+      canvasCtx.restore();
 
       if (results.poseLandmarks) {
         const landmarks = results.poseLandmarks;
-        const modo = document.getElementById('select-ejercicio').value;
         
-        let p1 = null, p2 = null, p3 = null;
+        // Mapeo adaptativo: usa el brazo que tenga mejor visibilidad en cámara
+        let armIndex = (landmarks[13].visibility > landmarks[14].visibility) ? [11, 13, 15] : [12, 14, 16];
+        
+        const pHombro = landmarks[armIndex[0]];
+        const pCodo = landmarks[armIndex[1]];
+        const pMuñeca = landmarks[armIndex[2]];
 
-        // Selección de nodos según ejercicio
-        if (modo === 'armwrestling' || modo === 'streetlifting') {
-          // Brazo Izquierdo (Hombro: 11, Codo: 13, Muñeca: 15)
-          p1 = landmarks[11];
-          p2 = landmarks[13];
-          p3 = landmarks[15];
-        } else if (modo === 'piernas') {
-          // Pierna Izquierda (Cadera: 23, Rodilla: 25, Tobillo: 27)
-          p1 = landmarks[23];
-          p2 = landmarks[25];
-          p3 = landmarks[27];
-        }
+        actualizarDiagnosticoAI(pHombro, pCodo, pMuñeca);
 
-        if (p1 && p2 && p3 && p1.visibility > 0.5 && p2.visibility > 0.5 && p3.visibility > 0.5) {
-          anguloActual = calcularAngleDirect(p1, p2, p3);
+        if (pHombro && pCodo && pMuñeca) {
+          // Cálculo de ángulo plano
+          let v1 = { x: pHombro.x - pCodo.x, y: pHombro.y - pCodo.y };
+          let v2 = { x: pMuñeca.x - pCodo.x, y: pMuñeca.y - pCodo.y };
+          let dot = v1.x * v2.x + v1.y * v2.y;
+          let mod1 = Math.sqrt(v1.x*v1.x + v1.y*v1.y);
+          let mod2 = Math.sqrt(v2.x*v2.x + v2.y*v2.y);
+          anguloActual = Math.acos(dot / (mod1 * mod2)) * (180 / Math.PI);
+          
           document.getElementById('val-angulo').innerText = Math.round(anguloActual) + "°";
 
-          // Calcular velocidad vertical para potencia
+          // Cálculo de velocidad vertical relativa
           let currentTime = performance.now();
-          let currentY = p3.y * canvasElement.height;
+          let currentY = pMuñeca.y * canvasElement.height;
           if (prevY !== null) {
-            let dy = Math.abs(currentY - prevY) / canvasElement.height; // normalizado
-            let dt = (currentTime - prevTime) / 1000; // en segundos
-            if (dt > 0) {
-              let velocidad = dy / dt; 
+            let dy = Math.abs(currentY - prevY) / canvasElement.height;
+            let dt = (currentTime - prevTime) / 1000;
+            if (dt > 0 && dy > 0.002) {
+              let velocidad = dy / dt;
               let pesoInput = parseFloat(document.getElementById('peso').value) || 0;
-              potenciaActual = (pesoInput * 9.81) * velocidad * 2; // Factor de escala para visualización
+              potenciaActual = (pesoInput * 9.81) * velocidad * 1.5;
             }
           }
           prevY = currentY;
           prevTime = currentTime;
 
-          // Dibujar esqueleto personalizado en el Canvas
-          const dibujarPunto = (pt, color) => {
+          // Renderizar interfaz gráfica sobre el canvas
+          const drawNode = (pt, color) => {
             let cx = pt.x * canvasElement.width;
             let cy = pt.y * canvasElement.height;
-            if (isMirrored) cx = canvasElement.width - cx; // Corregir coordenadas si está en modo espejo
-
+            if (isMirrored) cx = canvasElement.width - cx;
             canvasCtx.beginPath();
-            canvasCtx.arc(cx, cy, 8, 0, 2 * Math.PI);
+            canvasCtx.arc(cx, cy, 7, 0, 2 * Math.PI);
             canvasCtx.fillStyle = color;
             canvasCtx.fill();
             canvasCtx.strokeStyle = '#ffffff';
-            canvasCtx.lineWidth = 2;
+            canvasCtx.lineWidth = 1.5;
             canvasCtx.stroke();
           };
 
-          const dibujarLinea = (ptA, ptB, color) => {
-            let ax = ptA.x * canvasElement.width;
-            let ay = ptA.y * canvasElement.height;
-            let bx = ptB.x * canvasElement.width;
-            let by = ptB.y * canvasElement.height;
-            if (isMirrored) {
-              ax = canvasElement.width - ax;
-              bx = canvasElement.width - bx;
-            }
+          const drawVector = (ptA, ptB) => {
+            let ax = ptA.x * canvasElement.width; let ay = ptA.y * canvasElement.height;
+            let bx = ptB.x * canvasElement.width; let by = ptB.y * canvasElement.height;
+            if (isMirrored) { ax = canvasElement.width - ax; bx = canvasElement.width - bx; }
             canvasCtx.beginPath();
             canvasCtx.moveTo(ax, ay);
             canvasCtx.lineTo(bx, by);
-            canvasCtx.strokeStyle = color;
-            canvasCtx.lineWidth = 4;
+            canvasCtx.strokeStyle = '#00ffcc';
+            canvasCtx.lineWidth = 3;
             canvasCtx.stroke();
           };
 
-          // Renderizar líneas de articulación estilo Cyberpunk/Biomecánico
-          dibujarLinea(p1, p2, '#00ffcc');
-          dibujarLinea(p2, p3, '#00ffcc');
-          dibujarPunto(p1, '#27272a');
-          dibujarPunto(p2, '#d946ef'); // El vértice brilla en magenta
-          dibujarPunto(p3, '#27272a');
-          
+          drawVector(pHombro, pCodo);
+          drawVector(pCodo, pMuñeca);
+          drawNode(pHombro, '#27272a');
+          drawNode(pCodo, '#d946ef');
+          drawNode(pMuñeca, '#00ffcc');
+
           actualizarCalculos();
         }
+      } else {
+        actualizarDiagnosticoAI(null, null, null);
       }
     }
 
-    // Auxiliar de cálculo geométrico plano
-    function calcularAngleDirect(A, B, C) {
-      let v1 = { x: A.x - B.x, y: A.y - B.y };
-      let v2 = { x: C.x - B.x, y: C.y - B.y };
-      let dotProduct = v1.x * v2.x + v1.y * v2.y;
-      let modV1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
-      let modV2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
-      let angle = Math.acos(dotProduct / (modV1 * modV2));
-      return angle * (180 / Math.PI);
+    // Grabador de Pantalla (Canvas Stream)
+    function toggleRecording() {
+      const btn = document.getElementById('btn-record');
+      if (!isRecording) {
+        recordedChunks = [];
+        // Capturar stream del canvas a 30 FPS con audio silenciado
+        let stream = canvasElement.captureStream(30);
+        
+        // Configurar el codificador según compatibilidad de smartphone
+        let options = { mimeType: 'video/webm; codecs=vp9' };
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+          options = { mimeType: 'video/webm' };
+        }
+
+        mediaRecorder = new MediaRecorder(stream, options);
+        mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+        
+        mediaRecorder.onstop = () => {
+          let blob = new Blob(recordedChunks, { type: 'video/webm' });
+          let url = URL.createObjectURL(blob);
+          let a = document.createElement('a');
+          a.href = url;
+          a.download = `Kodiak_Tracking_${Date.now()}.webm`;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+        btn.innerText = "⏹️ Detener y Guardar";
+        btn.className = "recording";
+      } else {
+        mediaRecorder.stop();
+        isRecording = false;
+        btn.innerText = "🔴 Grabar Tracking";
+        btn.className = "";
+      }
     }
 
-    // Configuración e inicio del Modelo de Inteligencia Artificial
-    const pose = new Pose({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
-    });
-    pose.setOptions({
-      modelComplexity: 1,
-      smoothLandmarks: true,
-      minDetectionConfidence: 0.6,
-      minTrackingConfidence: 0.6
-    });
+    const pose = new Pose({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}` });
+    pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
     pose.onResults(onResults);
 
-    // Manejo nativo de stream de cámara de video HTML5
     async function initCamera() {
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-      }
-
-      const constraints = {
-        video: {
-          facingMode: currentFacingMode,
-          width: { ideal: 640 },
-          height: { ideal: 480 }
-        }
-      };
-
+      if (localStream) { localStream.getTracks().forEach(track => track.stop()); }
+      const constraints = { video: { facingMode: currentFacingMode, width: { ideal: 640 }, height: { ideal: 480 } } };
       try {
         localStream = await navigator.mediaDevices.getUserMedia(constraints);
         videoElement.srcObject = localStream;
         isMirrored = (currentFacingMode === 'user');
         videoElement.play();
         requestAnimationFrame(procesarFrame);
-      } catch (err) {
-        alert("Error crítico accediendo a la cámara: " + err.message);
-      }
+      } catch (err) { alert("Error de acceso a cámara: " + err.message); }
     }
 
     async function procesarFrame() {
-      if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
-        await pose.send({ image: videoElement });
-      }
+      if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) { await pose.send({ image: videoElement }); }
       requestAnimationFrame(procesarFrame);
     }
 
@@ -324,11 +353,8 @@
       initCamera();
     }
 
-    // Arrancar el sistema automáticamente al abrir la web
-    window.onload = () => {
-      initCamera();
-      actualizarCalculos();
-    };
+    window.onload = () => { initCamera(); actualizarCalculos(); };
   </script>
 </body>
 </html>
+
