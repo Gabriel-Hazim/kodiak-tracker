@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Kodiak Biomechanical Lab Pro v3 🦾</title>
+  <title>Kodiak Biomechanical Lab v4 🦾</title>
   
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
 
@@ -11,11 +11,11 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #070708; color: #f4f4f5; padding: 10px; display: flex; flex-direction: column; align-items: center; }
     
-    h1 { font-size: 1.3rem; color: #00ffcc; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; text-shadow: 0 0 10px rgba(0,255,204,0.3); text-align: center; }
+    h1 { font-size: 1.2rem; color: #00ffcc; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; text-shadow: 0 0 10px rgba(0,255,204,0.3); text-align: center; }
     
     #canvas-container { position: relative; width: 100%; max-width: 640px; aspect-ratio: 4/3; background: #111113; border-radius: 12px; overflow: hidden; border: 2px solid #27272a; }
     video { display: none; }
-    canvas { width: 100%; height: 100%; object-fit: cover; }
+    canvas { width: 100%; height: 100%; object-fit: cover; touch-action: none; }
     
     .btn-container { width: 100%; max-width: 640px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin: 10px 0; }
     button, .file-label { padding: 12px; background: #18181b; border: 1px solid #3f3f46; border-radius: 8px; color: white; font-weight: bold; font-size: 0.8rem; cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center; gap: 5px; transition: all 0.2s; }
@@ -27,12 +27,13 @@
     .panel { width: 100%; max-width: 640px; background: #111113; border-radius: 12px; padding: 12px; border: 1px solid #27272a; margin-bottom: 10px; }
     .section-title { font-size: 0.75rem; color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; border-bottom: 1px solid #27272a; padding-bottom: 4px; }
     
-    .joint-learning-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
-    .joint-status { background: #18181b; padding: 6px; border-radius: 6px; text-align: center; border: 1px solid #27272a; }
-    .joint-name { font-size: 0.65rem; color: #a1a1aa; font-weight: bold; }
-    .joint-score { font-size: 0.9rem; font-weight: bold; }
-    .status-good { color: #10b981; }
-    .status-bad { color: #ef4444; }
+    .toggle-container { display: flex; align-items: center; justify-content: space-between; background: #18181b; padding: 10px; border-radius: 8px; border: 1px solid #3f3f46; margin-bottom: 10px; }
+    .switch { position: relative; display: inline-block; width: 46px; height: 24px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #27272a; transition: .3s; border-radius: 24px; }
+    .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .3s; border-radius: 50%; }
+    input:checked + .slider { background-color: #d946ef; }
+    input:checked + .slider:before { transform: translateX(22px); }
 
     .grid-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
     input, select { padding: 10px; background: #070708; border: 1px solid #3f3f46; border-radius: 6px; color: white; font-size: 0.85rem; width: 100%; }
@@ -43,7 +44,7 @@
 </head>
 <body>
 
-  <h1>Kodiak Biomechanical Lab Pro v3 🦾</h1>
+  <h1>Kodiak Biomechanical Lab v4 🦾</h1>
 
   <div id="canvas-container">
     <video id="webcam" autoplay playsinline muted></video>
@@ -51,7 +52,7 @@
   </div>
 
   <div class="btn-container">
-    <button id="btn-toggle-cam" onclick="toggleCamera()">🔄 Girar Cámara</button>
+    <button id="btn-toggle-cam" onclick="ejecutarAccionCamara()">🔄 Girar Cámara</button>
     <button id="btn-record" onclick="toggleRecording()">🔴 Grabar con Datos</button>
     
     <label class="file-label" for="video-upload">📂 Analizar Video Guardado
@@ -64,12 +65,13 @@
     </select>
   </div>
 
-  <div class="panel">
-    <div class="section-title">Diagnóstico de Visibilidad Operacional</div>
-    <div class="joint-learning-grid">
-      <div class="joint-status" id="track-hombro"><div class="joint-name">HOMBRO</div><div class="joint-score status-bad" id="score-hombro">0%</div></div>
-      <div class="joint-status" id="track-codo"><div class="joint-name">CODO</div><div class="joint-score status-bad" id="score-codo">0%</div></div>
-      <div class="joint-status" id="track-muñeca"><div class="joint-name">MUÑECA</div><div class="joint-score status-bad" id="score-muñeca">0%</div></div>
+  <div class="panel" style="padding: 5px 12px;">
+    <div class="toggle-container">
+      <span style="font-size: 0.85rem; font-weight: bold; color: #d946ef;">🎯 Activar Plotter Manual (Arrastra los puntos)</span>
+      <label class="switch">
+        <input type="checkbox" id="chk-manual" onchange="toggleModoManual(this.checked)">
+        <span class="slider"></span>
+      </label>
     </div>
   </div>
 
@@ -110,16 +112,32 @@
     let prevY = null;
     let prevTime = performance.now();
 
+    // Configuración del Plotter Manual (Kinovea Mode)
+    let modoManualActivo = false;
+    let puntosManuales = [
+      { x: 0.35, y: 0.45, color: '#18181b', label: 'Hombro' }, // Hombro
+      { x: 0.50, y: 0.60, color: '#d946ef', label: 'Codo' },   // Codo
+      { x: 0.65, y: 0.45, color: '#00ffcc', label: 'Muñeca' }  // Muñeca
+    ];
+    let puntoArrastrándose = -1;
+
+    function toggleModoManual(activo) {
+      modoManualActivo = activo;
+      actualizarCalculos();
+    }
+
     function actualizarCalculos() {
       const modo = document.getElementById('select-ejercicio').value;
       const pesoInput = parseFloat(document.getElementById('peso').value) || 0;
       const palancaInput = parseFloat(document.getElementById('palanca').value) || 0.25;
 
-      // Cálculo de Torque Biomecánico Real
+      if (modoManualActivo) {
+        calcularAnguloManual();
+      }
+
       let fuerza = pesoInput * 9.81;
       torqueActual = fuerza * palancaInput * Math.sin(anguloActual * Math.PI / 180);
 
-      // Algoritmo e integraciones de Gabriel (Kodiak Formulas)
       let isoSecondsSim = (anguloActual > 35) ? (anguloActual / 8) : 2;
       repesTeoricas = isoSecondsSim / 3;
 
@@ -127,25 +145,62 @@
       aguanteMaximo = (pesoInput * repesTeoricas * 0.0333) + pesoInput + plusKg;
     }
 
-    function actualizarDiagnosticoAI(hombro, codo, muñeca) {
-      const actualizarNodo = (idScore, idCard, landmark) => {
-        const elScore = document.getElementById(idScore);
-        const elCard = document.getElementById(idCard);
-        if (!landmark) {
-          elScore.innerText = "0%"; elScore.className = "joint-score status-bad"; return;
-        }
-        let score = Math.round(landmark.visibility * 100);
-        elScore.innerText = score + "%";
-        if (score > 75) {
-          elScore.className = "joint-score status-good"; elCard.style.borderColor = "#10b981";
-        } else {
-          elScore.className = "joint-score status-bad"; elCard.style.borderColor = "#ef4444";
-        }
-      };
-      actualizarNodo('score-hombro', 'track-hombro', hombro);
-      actualizarNodo('score-codo', 'track-codo', codo);
-      actualizarNodo('score-muñeca', 'track-muñeca', muñeca);
+    function calcularAnguloManual() {
+      let A = puntosManuales[0];
+      let B = puntosManuales[1];
+      let C = puntosManuales[2];
+      let v1 = { x: A.x - B.x, y: A.y - B.y };
+      let v2 = { x: C.x - B.x, y: C.y - B.y };
+      let dot = v1.x * v2.x + v1.y * v2.y;
+      let mod1 = Math.sqrt(v1.x*v1.x + v1.y*v1.y);
+      let mod2 = Math.sqrt(v2.x*v2.x + v2.y*v2.y);
+      if (mod1 * mod2 === 0) return;
+      anguloActual = Math.acos(dot / (mod1 * mod2)) * (180 / Math.PI);
     }
+
+    // --- MANEJO DE EVENTOS DE TOQUE/MOUSE PARA EL PLOTTER MANUAL ---
+    function detectarPuntoCercano(x, y, rango) {
+      for (let i = 0; i < puntosManuales.length; i++) {
+        let dist = Math.sqrt(Math.pow(puntosManuales[i].x - x, 2) + Math.pow(puntosManuales[i].y - y, 2));
+        if (dist < rango) return i;
+      }
+      return -1;
+    }
+
+    function procesarInicioArrastre(clientX, clientY) {
+      if (!modoManualActivo) return;
+      const rect = canvasElement.getBoundingClientRect();
+      const x = (clientX - rect.left) / rect.width;
+      const y = (clientY - rect.top) / rect.height;
+      puntoArrastrándose = detectarPuntoCercano(x, y, 0.08);
+    }
+
+    function procesarMovimientoArrastre(clientX, clientY) {
+      if (!modoManualActivo || puntoArrastrándose === -1) return;
+      const rect = canvasElement.getBoundingClientRect();
+      let x = (clientX - rect.left) / rect.width;
+      let y = (clientY - rect.top) / rect.height;
+      
+      puntosManuales[puntoArrastrándose].x = Math.max(0, Math.min(1, x));
+      puntosManuales[puntoArrastrándose].y = Math.max(0, Math.min(1, y));
+      actualizarCalculos();
+    }
+
+    canvasElement.addEventListener('mousedown', (e) => procesarInicioArrastre(e.clientX, e.clientY));
+    canvasElement.addEventListener('mousemove', (e) => procesarMovimientoArrastre(e.clientX, e.clientY));
+    canvasElement.addEventListener('mouseup', () => puntoArrastrándose = -1);
+
+    canvasElement.addEventListener('touchstart', (e) => {
+      if(e.touches.length > 0) procesarInicioArrastre(e.touches[0].clientX, e.touches[0].clientY);
+    });
+    canvasElement.addEventListener('touchmove', (e) => {
+      if(e.touches.length > 0) {
+        e.preventDefault();
+        procesarMovimientoArrastre(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, {passive: false});
+    canvasElement.addEventListener('touchend', () => puntoArrastrándose = -1);
+
 
     function onResults(results) {
       if (canvasElement.width !== videoElement.videoWidth) {
@@ -156,7 +211,6 @@
       canvasCtx.save();
       canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
       
-      // Renderizado del feed original de video
       if (isMirrored) {
         canvasCtx.translate(canvasElement.width, 0);
         canvasCtx.scale(-1, 1);
@@ -164,7 +218,36 @@
       canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
       canvasCtx.restore();
 
-      if (results.poseLandmarks) {
+      // RENDER INTELIGENTE: AI o MANUAL
+      if (modoManualActivo) {
+        // Dibujar las líneas y puntos que el usuario arrastra
+        const dibujarLineaManual = (ptA, ptB) => {
+          canvasCtx.beginPath();
+          canvasCtx.moveTo(ptA.x * canvasElement.width, ptA.y * canvasElement.height);
+          canvasCtx.lineTo(ptB.x * canvasElement.width, ptB.y * canvasElement.height);
+          canvasCtx.strokeStyle = '#d946ef';
+          canvasCtx.lineWidth = 4;
+          canvasCtx.stroke();
+        };
+
+        dibujarLineaManual(puntosManuales[0], puntosManuales[1]);
+        dibujarLineaManual(puntosManuales[1], puntosManuales[2]);
+
+        puntosManuales.forEach(pt => {
+          let cx = pt.x * canvasElement.width;
+          let cy = pt.y * canvasElement.height;
+          canvasCtx.beginPath();
+          canvasCtx.arc(cx, cy, 10, 0, 2 * Math.PI);
+          canvasCtx.fillStyle = pt.color;
+          canvasCtx.fill();
+          canvasCtx.strokeStyle = '#ffffff';
+          canvasCtx.lineWidth = 2.5;
+          canvasCtx.stroke();
+        });
+        actualizarCalculos();
+
+      } else if (results.poseLandmarks) {
+        // Modo AI Estándar si está activo
         const landmarks = results.poseLandmarks;
         let armIndex = (landmarks[13].visibility > landmarks[14].visibility) ? [11, 13, 15] : [12, 14, 16];
         
@@ -172,10 +255,7 @@
         const pCodo = landmarks[armIndex[1]];
         const pMuñeca = landmarks[armIndex[2]];
 
-        actualizarDiagnosticoAI(pHombro, pCodo, pMuñeca);
-
         if (pHombro && pCodo && pMuñeca) {
-          // Geometría angular plana
           let v1 = { x: pHombro.x - pCodo.x, y: pHombro.y - pCodo.y };
           let v2 = { x: pMuñeca.x - pCodo.x, y: pMuñeca.y - pCodo.y };
           let dot = v1.x * v2.x + v1.y * v2.y;
@@ -183,7 +263,6 @@
           let mod2 = Math.sqrt(v2.x*v2.x + v2.y*v2.y);
           anguloActual = Math.acos(dot / (mod1 * mod2)) * (180 / Math.PI);
 
-          // Velocidad y potencia cinética
           let currentTime = performance.now();
           let currentY = pMuñeca.y * canvasElement.height;
           if (prevY !== null) {
@@ -200,7 +279,6 @@
 
           actualizarCalculos();
 
-          // Renderizado del esqueleto Cyberpunk
           const drawNode = (pt, color) => {
             let cx = pt.x * canvasElement.width; let cy = pt.y * canvasElement.height;
             if (isMirrored) cx = canvasElement.width - cx;
@@ -225,7 +303,6 @@
         }
       }
 
-      // LA MAGIA: Dibujar los datos matemáticos quemados dentro del propio Canvas (se guardarán en el video)
       renderizarMétricasEnCanvas();
     }
 
@@ -233,26 +310,24 @@
       const modo = document.getElementById('select-ejercicio').value;
       
       canvasCtx.save();
-      // Caja contenedora superior de datos
       canvasCtx.fillStyle = "rgba(12, 12, 14, 0.85)";
       canvasCtx.fillRect(10, 10, 240, 125);
-      canvasCtx.strokeStyle = "#00ffcc";
-      canvasCtx.lineWidth = 1.5;
+      canvasCtx.strokeStyle = modoManualActivo ? "#d946ef" : "#00ffcc";
+      canvasCtx.lineWidth = 2;
       canvasCtx.strokeRect(10, 10, 240, 125);
 
-      // Renderizado del texto
+      canvasCtx.font = "bold 11px 'Segoe UI', sans-serif";
+      canvasCtx.fillStyle = modoManualActivo ? "#d946ef" : "#00ffcc";
+      canvasCtx.fillText(modoManualActivo ? "MODO PLOTTER MANUAL ACTIVO" : "METRICAS KODIAK EN TIEMPO REAL", 18, 28);
+      
       canvasCtx.font = "bold 13px 'Segoe UI', sans-serif";
-      canvasCtx.fillStyle = "#a1a1aa";
-      
-      canvasCtx.fillText("METRICAS KODIAK EN TIEMPO REAL", 18, 28);
-      
       canvasCtx.fillStyle = "#ffffff";
       canvasCtx.fillText(`ANGULO CODO: ${Math.round(anguloActual)}°`, 18, 52);
       
       if (modo === 'armwrestling') {
         canvasCtx.fillText(`TORQUE: ${torqueActual.toFixed(2)} Nm`, 18, 72);
       } else {
-        canvasCtx.fillText(`POTENCIA: ${Math.round(potenciaActual)} W", 18, 72`);
+        canvasCtx.fillText(`POTENCIA: ${Math.round(potenciaActual)} W`, 18, 72);
       }
       
       canvasCtx.fillStyle = "#d946ef";
@@ -296,12 +371,11 @@
       }
     }
 
-    // Carga recursiva de videos guardados de tus levantamientos
     function cargarVideoAnalisis(event) {
       const file = event.target.files[0];
       if (file) {
         isUsingUploadedVideo = true;
-        isMirrored = false; // Desactivar espejo para videos pregrabados externos
+        isMirrored = false; 
         if (localStream) { localStream.getTracks().forEach(track => track.stop()); }
         
         const fileURL = URL.createObjectURL(file);
@@ -310,7 +384,21 @@
         videoElement.muted = true;
         videoElement.loop = true;
         videoElement.play();
+        
+        document.getElementById('btn-toggle-cam').innerText = "📷 Volver a En Vivo";
         requestAnimationFrame(procesarFrame);
+      }
+    }
+
+    // FUNCIÓN DE RETORNO LIMPIO A LA CÁMARA REAL EN VIVO
+    function ejecutarAccionCamara() {
+      if (isUsingUploadedVideo) {
+        videoElement.src = "";
+        initCamera();
+        document.getElementById('btn-toggle-cam').innerText = "🔄 Girar Cámara";
+      } else {
+        currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+        initCamera();
       }
     }
 
@@ -324,7 +412,6 @@
       const constraints = { video: { facingMode: currentFacingMode, width: { ideal: 640 }, height: { ideal: 480 } } };
       try {
         localStream = await navigator.mediaDevices.getUserMedia(constraints);
-        videoElement.src = null;
         videoElement.srcObject = localStream;
         isMirrored = (currentFacingMode === 'user');
         videoElement.play();
@@ -335,12 +422,6 @@
     async function procesarFrame() {
       if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) { await pose.send({ image: videoElement }); }
       requestAnimationFrame(procesarFrame);
-    }
-
-    function toggleCamera() {
-      if(isUsingUploadedVideo) { initCamera(); return; }
-      currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
-      initCamera();
     }
 
     window.onload = () => { initCamera(); actualizarCalculos(); };
